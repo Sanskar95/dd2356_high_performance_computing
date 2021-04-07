@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
 
     ts = mysecond();;/* start time */
     for (i = 0; i < num_steps; i++) {
-      
-        // calculateForces();
+        calculateForces();
+        // calculateForcesReduced();
         calculatePositionAndVelocities();
         // printVelocitiesAndPositions();
     }
