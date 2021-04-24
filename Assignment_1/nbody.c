@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
     double ts, t;
 
 
-    num_bodies = 2000;
-    num_steps = 100;
+    num_bodies = 500;
+    num_steps = 1000;
 
     /* initialize bodies */
    
@@ -71,8 +71,8 @@ int main(int argc, char *argv[]) {
 
     ts = mysecond();;/* start time */
     for (i = 0; i < num_steps; i++) {
-        calculateForces();
-        // calculateForcesReduced();
+        // calculateForces();
+        calculateForcesReduced();
         calculatePositionAndVelocities();
         // printVelocitiesAndPositions();
     }
