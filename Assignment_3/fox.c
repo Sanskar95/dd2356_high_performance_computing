@@ -6,13 +6,119 @@
 #include <string.h>
 #include <assert.h>
 
-void print_matrix(double *, int);
-void fill_matrix(double *, int, int);
-void generateIdentityMatrix(double *, int);
-void multiply(double *, double *, double *, int);
-void generateInitialMatrices(double **, double **, double **, int);
-void distributedMatrixToProcesses(double *, double *, int, int, MPI_Datatype *, MPI_Comm, MPI_Request *);
-int assertMatrices(double *, double *, int);
+
+
+void freeParentMatrices()
+{
+  free(A);
+  free(B);
+  free(C);
+}
+
+void freeChildrenMatrices()
+{
+  free(Ab);
+  free(Ab_temp);
+  free(Bb);
+  free(Bb_temp);
+  free(Cb);
+}
+
+void fill_matrix(double *m, int n, int seed)
+{
+  int row, col;
+  srand(seed);
+  for (row = 0; row < n; row++)
+    for (col = 0; col < n; col++)
+      m[row * n + col] = ((double)rand() * 1000 / (double)(RAND_MAX));
+}
+
+void generateIdentityMatrix(double *m, int n)
+{
+  int row, col;
+  for (row = 0; row < n; row++)
+    for (col = 0; col < n; col++)
+      m[row * n + col] = row == col ? 1 : 0;
+}
+
+void print_matrix(double *m, int n)
+{
+  int row, col;
+  for (row = 0; row < n; row++)
+  {
+    for (col = 0; col < n; col++)
+    {
+      printf("%f ", m[row * n + col]);
+    }
+    printf("\n");
+  }
+  printf("\n");
+}
+
+void multiply(double *a, double *b, double *c, int n)
+{
+  int k, j, i;
+  for (k = 0; k < n; ++k)
+    for (i = 0; i < n; ++i)
+      for (j = 0; j < n; ++j)
+        c[i * n + j] += a[i * n + k] * b[k * n + j];
+}
+
+int assertMatrices(double *a, double *b, int n)
+{
+  int row, col;
+  int flag = 1;
+  for (row = 0; row < n; ++row)
+    for (col = 0; col < n; ++col)
+    {
+      if (a[row * n + col] != b[row * n + col])
+      {
+        flag = 0;
+        break;
+      }
+    }
+  return flag;
+}
+
+void generateInitialMatrices(double **A, double **B, double **C, int n)
+{
+  *A = (double *)calloc(n * n, sizeof(double));
+  fill_matrix(*A, n, 23);
+  printf("\nMatrix A is:\n");
+  print_matrix(*A, n);
+
+  *B = (double *)calloc(n * n, sizeof(double));
+  generateIdentityMatrix(*B, n);
+  printf("Matrix B is:\n");
+  print_matrix(*B, n);
+
+  *C = (double *)calloc(n * n, sizeof(double));
+}
+
+void distributedMatrixToProcesses(double *A, double *B, int n, int numBlocks, MPI_Datatype *newtype, MPI_Comm processGrid, MPI_Request *request)
+{
+  int count = n / numBlocks;
+  int blockLength = n / numBlocks;
+  int stride = n;
+  int grank;
+  MPI_Type_vector(count, blockLength, stride, MPI_DOUBLE, newtype);
+  MPI_Type_commit(newtype);
+  int pos[2], i, j;
+
+  for (i = 0; i < numBlocks; ++i)
+  {
+    for (j = 0; j < numBlocks; ++j)
+    {
+      pos[0] = i;
+      pos[1] = j;
+      MPI_Cart_rank(processGrid, pos, &grank);
+      MPI_Isend(&A[(n * (n * i + j)) / numBlocks], 1, *newtype, grank, 1, processGrid, request);
+      MPI_Isend(&B[(n * (n * i + j)) / numBlocks], 1, *newtype, grank, 2, processGrid, request);
+    }
+  }
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -152,112 +258,3 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-void freeParentMatrices()
-{
-  free(A);
-  free(B);
-  free(C);
-}
-
-void freeChildrenMatrices()
-{
-  free(Ab);
-  free(Ab_temp);
-  free(Bb);
-  free(Bb_temp);
-  free(Cb);
-}
-
-void fill_matrix(double *m, int n, int seed)
-{
-  int row, col;
-  srand(seed);
-  for (row = 0; row < n; row++)
-    for (col = 0; col < n; col++)
-      m[row * n + col] = ((double)rand() * 1000 / (double)(RAND_MAX));
-}
-
-void generateIdentityMatrix(double *m, int n)
-{
-  int row, col;
-  for (row = 0; row < n; row++)
-    for (col = 0; col < n; col++)
-      m[row * n + col] = row == col ? 1 : 0;
-}
-
-void print_matrix(double *m, int n)
-{
-  int row, col;
-  for (row = 0; row < n; row++)
-  {
-    for (col = 0; col < n; col++)
-    {
-      printf("%f ", m[row * n + col]);
-    }
-    printf("\n");
-  }
-  printf("\n");
-}
-
-void multiply(double *a, double *b, double *c, int n)
-{
-  int k, j, i;
-  for (k = 0; k < n; ++k)
-    for (i = 0; i < n; ++i)
-      for (j = 0; j < n; ++j)
-        c[i * n + j] += a[i * n + k] * b[k * n + j];
-}
-
-int assertMatrices(double *a, double *b, int n)
-{
-  int row, col;
-  int flag = 1;
-  for (row = 0; row < n; ++row)
-    for (col = 0; col < n; ++col)
-    {
-      if (a[row * n + col] != b[row * n + col])
-      {
-        flag = 0;
-        break;
-      }
-    }
-  return flag;
-}
-
-void generateInitialMatrices(double **A, double **B, double **C, int n)
-{
-  *A = (double *)calloc(n * n, sizeof(double));
-  fill_matrix(*A, n, 23);
-  printf("\nMatrix A is:\n");
-  print_matrix(*A, n);
-
-  *B = (double *)calloc(n * n, sizeof(double));
-  generateIdentityMatrix(*B, n);
-  printf("Matrix B is:\n");
-  print_matrix(*B, n);
-
-  *C = (double *)calloc(n * n, sizeof(double));
-}
-
-void distributedMatrixToProcesses(double *A, double *B, int n, int numBlocks, MPI_Datatype *newtype, MPI_Comm processGrid, MPI_Request *request)
-{
-  int count = n / numBlocks;
-  int blockLength = n / numBlocks;
-  int stride = n;
-  int grank;
-  MPI_Type_vector(count, blockLength, stride, MPI_DOUBLE, newtype);
-  MPI_Type_commit(newtype);
-  int pos[2], i, j;
-
-  for (i = 0; i < numBlocks; ++i)
-  {
-    for (j = 0; j < numBlocks; ++j)
-    {
-      pos[0] = i;
-      pos[1] = j;
-      MPI_Cart_rank(processGrid, pos, &grank);
-      MPI_Isend(&A[(n * (n * i + j)) / numBlocks], 1, *newtype, grank, 1, processGrid, request);
-      MPI_Isend(&B[(n * (n * i + j)) / numBlocks], 1, *newtype, grank, 2, processGrid, request);
-    }
-  }
-}
