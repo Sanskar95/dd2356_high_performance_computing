@@ -8,21 +8,15 @@
 
 
 
-void freeParentMatrices()
-{
-  free(A);
-  free(B);
-  free(C);
-}
+// void freeParentMatrices(double *a, double*b, double*c)
+// {
+//   free(a);
+//   free(b);
+//   free(c);
+//}
 
-void freeChildrenMatrices()
-{
-  free(Ab);
-  free(Ab_temp);
-  free(Bb);
-  free(Bb_temp);
-  free(Cb);
-}
+// void freeChildrenMatrices();
+
 
 void fill_matrix(double *m, int n, int seed)
 {
@@ -88,7 +82,8 @@ void generateInitialMatrices(double **A, double **B, double **C, int n)
   print_matrix(*A, n);
 
   *B = (double *)calloc(n * n, sizeof(double));
-  generateIdentityMatrix(*B, n);
+  // generateIdentityMatrix(*B, n);
+   fill_matrix(*B, n, 23);
   printf("Matrix B is:\n");
   print_matrix(*B, n);
 
@@ -239,7 +234,13 @@ int main(int argc, char *argv[])
     }
     // printf("%d, %d, %f\n", n, pn*pn, end-start);
     printf("Result Matrix C is:\n");
+    print_matrix(C, n);
+
+    
+
     multiply(A, B, expectedC, n);
+    printf("Expected Result Matrix expectedC is:\n");
+    print_matrix(expectedC, n);
     if (assertMatrices(C, expectedC, n) == 1)
     {
       printf("Test Case Passed!! \n");
@@ -249,12 +250,26 @@ int main(int argc, char *argv[])
       printf("Test Case Failed! \n");
     }
 
-    freeParentMatrices()
+     free(A);
+    free(B);
+    free(C);
   }
   MPI_Wait(&request, &status);
-  freeChildrenMatrices()
+ free(Ab);
+  free(Ab_temp);
+  free(Bb);
+  free(Bb_temp);
+  free(Cb);
       MPI_Finalize();
 
   return 0;
 }
 
+// void freeChildrenMatrices()
+// {
+//   free(Ab);
+//   free(Ab_temp);
+//   free(Bb);
+//   free(Bb_temp);
+//   free(Cb);
+// }
